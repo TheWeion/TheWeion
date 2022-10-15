@@ -6,7 +6,7 @@ Outside of work I love gaming, particularly tabletop role-playing games such as 
 which I play every week, I also enjoy reading sci-fi novels while I am travelling
 
 - 🔭 I’m currently working on code. 
-- 🌱 I’m currently awaiting placement into the world of Tech with futureproof. 
+- 🌱 I’m currently searching for my next adventure in the world of tech.
 - ⚡ Fun fact: What kind of Web Developers *do* like bugs? Spiders! 
 
 <div align="center">
