@@ -10,7 +10,7 @@ which I play every week, I also enjoy reading sci-fi novels while I am travellin
 - ⚡ Fun fact: What kind of Web Developers *do* like bugs? Spiders! 
 
 <div align="center">
-  <a href="https://github.com/TheWeion" target="_blank"><img src='https://cdn.jsdelivr.net/npm/simple-icons@3.0.1/icons/github.svg' alt='github' height='40' style="margin-right:30px"/></a>&emsp;<a href="https://www.linkedin.com/in/terryfallows/" target="_blank"><img src='https://cdn.jsdelivr.net/npm/simple-icons@3.0.1/icons/linkedin.svg' alt='linkedin' height='40'/></a>&emsp;<a href="https://weion.social" target="_blank"><img src='https://cdn.jsdelivr.net/npm/simple-icons@3.0.1/icons/icloud.svg'" alt='website' height='40'/></a>
+  <a href="https://github.com/TheWeion" target="_blank"><img src='https://cdn.jsdelivr.net/npm/simple-icons@3.0.1/icons/github.svg' alt='github' height='40' style="margin-right:30px"/></a>&emsp;<a href="https://www.linkedin.com/in/terryfallows/" target="_blank"><img src='https://cdn.jsdelivr.net/npm/simple-icons@3.0.1/icons/linkedin.svg' alt='linkedin' height='40'/></a>&emsp;<a href="https://weion.dev" target="_blank"><img src='https://cdn.jsdelivr.net/npm/simple-icons@3.0.1/icons/icloud.svg'" alt='website' height='40'/></a>
 </div>
 
 <hr>
