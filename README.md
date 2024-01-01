@@ -6,7 +6,7 @@ Outside of work I love gaming, particularly tabletop role-playing games such as 
 which I play every week, I also enjoy reading sci-fi novels while I am travelling
 
 - 🔭 I’m currently working on code. 
-- 🌱 I’m currently enhancing STB UI/UX for customers at CommScope.
+- 🌱 I’m currently enhancing STB UI/UX for customers at Vantiva.
 - ⚡ Fun fact: What kind of Web Developers *do* like bugs? Spiders! 
 
 <div align="center">
