@@ -1,7 +1,8 @@
 name: Sync from weion.dev
 
 # Rebuilds README.md + assets/ from the weion.dev Pages CMS content and the
-# site's edge-cached WakaTime feeds. Hourly so CMS edits land within the hour;
+# site's edge-cached WakaTime feeds. weion.dev dispatches on CMS commits; the
+# hourly schedule is the fallback and refreshes the stats;
 # the build is deterministic, so a run with no upstream change commits nothing.
 on:
   schedule:
@@ -33,6 +34,9 @@ jobs:
           cache-dependency-path: scripts/requirements.txt
       - run: pip install -r scripts/requirements.txt
       - run: python scripts/build.py
+        env:
+          # Set by weion.dev's notify-profile workflow on CMS commits.
+          CONTENT_REF: ${{ github.event.client_payload.sha }}
       - name: Commit changes
         run: |
           git config user.name 'github-actions[bot]'

@@ -7,6 +7,7 @@ portfolio section as a HUD-styled SVG panel under ``assets/`` and rewrites
 
 Environment overrides (for local runs):
   CONTENT_DIR   read the CMS JSON from a local ``src/content`` instead of GitHub
+  CONTENT_REF   weion.dev commit/branch to read the CMS JSON from (default main)
   SITE_URL      site origin for the WakaTime proxy and portrait (default weion.dev)
 """
 import base64
@@ -30,17 +31,37 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / 'assets'
 FONT_DIR = ROOT / 'scripts' / 'fonts'
 SITE = os.environ.get('SITE_URL', 'https://weion.dev').rstrip('/')
-CONTENT_RAW = 'https://raw.githubusercontent.com/TheWeion/weion.dev/main/src/content'
+CONTENT_REF = os.environ.get('CONTENT_REF') or 'main'
+CONTENT_RAW = f'https://raw.githubusercontent.com/TheWeion/weion.dev/{CONTENT_REF}/src/content'
 WAKATIME = {
     'waveform': '/api/wakatime/share/@Weion/6b858290-31aa-4626-9973-44e3fe47826b.json',
     'languages': '/api/wakatime/share/@Weion/5af1726d-42dd-428f-b84c-4d5fe825002e.json',
     'year': '/api/wakatime/share/@Weion/e7721aa6-b409-4e94-8c7f-43271fe0a81e.json',
 }
 
-# Mirrors src/lib/tokens.ts in weion.dev.
-C = dict(void='#05080C', panel='#0B1E2E', panel2='#132C3F', line='#1E3A52', muted='#7A8794',
-         ink='#C0CAD3', bright='#E8F1F7', halo='#B6D6EB', amber='#F5A623', amber_hot='#FFB547',
-         bronze='#8A6A3A', cyan='#03D8F3', magenta='#FF0055', ok='#7CE8C9', alarm='#E4412B')
+# `dark` mirrors src/lib/tokens.ts in weion.dev. `light` keeps the same roles with
+# the accents darkened for contrast on GitHub's light theme. Every asset is
+# rendered once per theme; the README serves the right one via <picture>.
+THEMES = {
+    'dark': dict(
+        void='#05080C', panel='#0B1E2E', panel2='#132C3F', line='#1E3A52', muted='#7A8794',
+        ink='#C0CAD3', bright='#E8F1F7', halo='#B6D6EB', amber='#F5A623', amber_hot='#FFB547',
+        bronze='#8A6A3A', cyan='#03D8F3', magenta='#FF0055', ok='#7CE8C9', alarm='#E4412B',
+        scan='#000000', scan_op='.28', panel_op='.92', heat0='rgba(30,58,82,.55)',
+        heat_rgb='3,216,243', lang_l=(.5, .65)),
+    'light': dict(
+        void='#F4F7FA', panel='#FFFFFF', panel2='#E8EFF5', line='#C3D2DF', muted='#5E6E7D',
+        ink='#2B3B4A', bright='#0B1E2E', halo='#2D6A94', amber='#B86A00', amber_hot='#C27400',
+        bronze='#9A7440', cyan='#0088A6', magenta='#D6004A', ok='#11806A', alarm='#C2341F',
+        scan='#0B1E2E', scan_op='.05', panel_op='.96', heat0='rgba(195,210,223,.7)',
+        heat_rgb='0,136,166', lang_l=(.34, .44)),
+}
+C = dict(THEMES['dark'])
+
+
+def set_theme(name):
+    C.clear()
+    C.update(THEMES[name])
 
 W = 1200
 
@@ -144,11 +165,11 @@ BASE_CSS = """
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 """
 
-PANEL_DEFS = f"""
-<linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
-  <stop offset="0" stop-color="{C['panel']}" stop-opacity=".92"/>
-  <stop offset="1" stop-color="{C['panel2']}" stop-opacity=".86"/>
-</linearGradient>"""
+def panel_defs():
+    return (f'<linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">'
+            f'<stop offset="0" stop-color="{C["panel"]}" stop-opacity="{C["panel_op"]}"/>'
+            f'<stop offset="1" stop-color="{C["panel2"]}" stop-opacity="{C["panel_op"]}"/>'
+            f'</linearGradient>')
 
 
 def svg(w, h, body, label, css='', defs='', scale=1.0):
@@ -157,7 +178,7 @@ def svg(w, h, body, label, css='', defs='', scale=1.0):
     faces = ''.join(f.embed(CHARSET) for f in used)
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:g} {h:g}" '
             f'width="{w * scale:g}" height="{h * scale:g}" role="img" aria-label="{escape(label)}">'
-            f'<style>{faces}{BASE_CSS}{css}</style><defs>{PANEL_DEFS}{defs}</defs>{body}</svg>')
+            f'<style>{faces}{BASE_CSS}{css}</style><defs>{panel_defs()}{defs}</defs>{body}</svg>')
 
 
 def text(x, y, s, cls, size, fill, ls=0.0, anchor='start', extra=''):
@@ -215,11 +236,14 @@ def stream_status(x, y, note='LIVE FEED · UPDATED DAILY'):
 
 
 WRITTEN = set()
+THEME = ['dark']
 
 
 def write(name, content):
-    WRITTEN.add(name)
-    (ASSETS / name).write_text(content)
+    path = ASSETS / THEME[0] / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    WRITTEN.add(path)
+    path.write_text(content)
 
 
 # ---------------------------------------------------------------- sections
@@ -262,7 +286,7 @@ def banner(op, portrait):
 """
     defs = f"""
 <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40,0 H0 V40" fill="none" stroke="{C['line']}" opacity=".35"/></pattern>
-<pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2" fill="#000" opacity=".28"/></pattern>
+<pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2" fill="{C['scan']}" opacity="{C['scan_op']}"/></pattern>
 <radialGradient id="warm" cx=".78" cy=".5" r=".55"><stop offset="0" stop-color="{C['amber']}" stop-opacity=".22"/><stop offset="1" stop-color="{C['amber']}" stop-opacity="0"/></radialGradient>
 <radialGradient id="cool" cx=".15" cy=".2" r=".6"><stop offset="0" stop-color="{C['cyan']}" stop-opacity=".10"/><stop offset="1" stop-color="{C['cyan']}" stop-opacity="0"/></radialGradient>
 <linearGradient id="sweepg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{C['halo']}" stop-opacity="0"/><stop offset=".5" stop-color="{C['halo']}" stop-opacity=".09"/><stop offset="1" stop-color="{C['halo']}" stop-opacity="0"/></linearGradient>
@@ -507,7 +531,8 @@ def bar_color(hx):
     """Port of ``pickBarColor`` / ``sciFiTune`` in useWakatime.ts."""
     h, s, l = hex_to_hsl(hx)
     if s >= .1:
-        return hsl_to_hex(h, max(s, .8), min(.65, max(.5, l)))
+        lo, hi = C['lang_l']
+        return hsl_to_hex(h, max(s, .8), min(hi, max(lo, l)))
     if l < .3:
         return C['bronze']
     if l > .7:
@@ -574,8 +599,8 @@ def telemetry_model(wave, langs, year):
                     ('BEST DAY', best_day, C['ok'])])
 
 
-HEAT = ['rgba(30,58,82,.55)', 'rgba(3,216,243,.18)', 'rgba(3,216,243,.42)',
-        'rgba(3,216,243,.70)', 'rgba(3,216,243,1)']
+def heat_colors():
+    return [C['heat0']] + [f"rgba({C['heat_rgb']},{a})" for a in ('.18', '.42', '.70', '1')]
 
 
 def telemetry(m, synced):
@@ -626,6 +651,7 @@ def telemetry(m, synced):
     else:
         cells, cols = [], 53
     hg = 3
+    HEAT = heat_colors()
     cell = (W - 4 - 48 - hg * (cols - 1)) / cols
     grid_h = 7 * cell + 6 * hg
     bh_ = 30 + grid_h + 30 + 56 + 66
@@ -701,33 +727,28 @@ def typing_url(op):
             f'&color=F5A623&center=true&vCenter=true&width=640&repeat=false&lines={q}')
 
 
-def img(name, alt, width='100%'):
-    return f'<img src="./assets/{name}" alt="{escape(alt, {chr(34): "&quot;"})}" width="{width}"/>'
+def picture(name, alt, width=None):
+    """Theme-aware image. GitHub swaps <picture> sources with its own appearance
+    setting and, unlike a bare <img>, doesn't wrap it in a link to the raw file."""
+    w = f' width="{width}"' if width else ''
+    return (f'<picture><source media="(prefers-color-scheme: dark)" srcset="./assets/dark/{name}"/>'
+            f'<source media="(prefers-color-scheme: light)" srcset="./assets/light/{name}"/>'
+            f'<img src="./assets/dark/{name}" alt="{escape(alt, {chr(34): "&quot;"})}"{w}/></picture>')
 
 
-def link_img(href, name, alt):
-    return f'<a href="{escape(href)}"><img src="./assets/{name}" alt="{escape(alt)}"/></a>'
+def link_pic(href, name, alt, width=None):
+    return f'<a href="{escape(href)}">{picture(name, alt, width)}</a>'
 
 
 def handle(url):
     return urlparse(url).path.strip('/').split('/')[-1].upper()
 
 
-def main():
-    ASSETS.mkdir(exist_ok=True)
-    profile = load_content('profile')
-    experience = load_content('experience')
-    education = load_content('education')
-    skills = load_content('skills')
-    projects = load_content('projects')
+def render_assets(data, portrait, feeds):
+    profile, experience, education, skills, projects = data
     op = {k: v for k, v in profile['operative'].items() if not blank(v)}
     socials = profile.get('socials', {})
-
-    global CHARSET
-    CHARSET += ''.join(sorted({ch for ch in json.dumps(
-        [profile, experience, education, skills, projects], ensure_ascii=False) if ord(ch) > 126}))
-
-    write('banner.svg', banner(op, portrait_uri()))
+    write('banner.svg', banner(op, portrait))
     for name, eyebrow, title, center in [
         ('h-dossier.svg', '// 02 · DOSSIER', 'PERSONNEL FILE', False),
         ('h-capabilities.svg', '// 03 · SYSTEMS', 'CAPABILITIES MATRIX', False),
@@ -741,120 +762,141 @@ def main():
     write('capabilities.svg', capabilities(skills['skills'], skills.get('coreSkills', [])))
     write('eof.svg', eof_copy())
     write('footer.svg', footer(profile.get('signoff') or 'END OF FILE'))
-
-    buttons = {
-        'btn-console.svg': ('OPERATIONS ARCHIVE', 'chev', 'amber'),
-        'btn-github.svg': ('GITHUB', 'code', 'ghost'),
-        'btn-linkedin.svg': ('LINKEDIN', 'link', 'ghost'),
-        'btn-eof-github.svg': (f"GITHUB / {handle(socials.get('github', ''))}", 'code', 'amber'),
-        'btn-eof-linkedin.svg': (f"LINKEDIN / {handle(socials.get('linkedin', ''))}", 'link', 'ghost'),
-        'btn-eof-mail.svg': ('SEND TRANSMISSION', 'mail', 'ghost'),
-        'btn-feed.svg': ('VIEW FEED', 'play', 'amber'),
-        'btn-live.svg': ('LIVE', 'ext', 'quiet'),
-        'btn-fe.svg': ('FE', 'code', 'quiet'),
-        'btn-be.svg': ('BE', 'code', 'quiet'),
-    }
-    for name, (label, icon, variant) in buttons.items():
-        write(name, button(label, icon, variant, 'sm' if name in (
-            'btn-feed.svg', 'btn-live.svg', 'btn-fe.svg', 'btn-be.svg') else 'md'))
-
-    archive = []
+    for name, (label, icon, variant, size) in {
+        'btn-console.svg': ('OPERATIONS ARCHIVE', 'chev', 'amber', 'md'),
+        'btn-github.svg': ('GITHUB', 'code', 'ghost', 'md'),
+        'btn-linkedin.svg': ('LINKEDIN', 'link', 'ghost', 'md'),
+        'btn-eof-github.svg': (f"GITHUB / {handle(socials.get('github', ''))}", 'code', 'amber', 'md'),
+        'btn-eof-linkedin.svg': (f"LINKEDIN / {handle(socials.get('linkedin', ''))}", 'link', 'ghost', 'md'),
+        'btn-eof-mail.svg': ('SEND TRANSMISSION', 'mail', 'ghost', 'md'),
+        'btn-feed.svg': ('VIEW FEED', 'play', 'amber', 'sm'),
+        'btn-live.svg': ('LIVE', 'ext', 'quiet', 'sm'),
+        'btn-fe.svg': ('FE', 'code', 'quiet', 'sm'),
+        'btn-be.svg': ('BE', 'code', 'quiet', 'sm'),
+    }.items():
+        write(name, button(label, icon, variant, size))
     for p in projects:
-        pid = p['id']
-        write(f'project-{pid}.svg', project_card(p))
-        links = [link_img(f'{SITE}/#archive', 'btn-feed.svg', 'View feed')]
-        for key, btn in (('live', 'btn-live.svg'), ('fe', 'btn-fe.svg'), ('be', 'btn-be.svg')):
-            if not blank(p.get(key)):
-                links.append(link_img(p[key], btn, key.upper()))
-        archive.append(f'<a href="{escape(p.get("live") or SITE)}">{img(f"project-{pid}.svg", p["name"])}</a>\n'
-                       f'<p>\n  {chr(10).join(links)}\n</p>\n')
+        write(f"project-{p['id']}.svg", project_card(p))
 
     # Telemetry: keep the last good render if WakaTime is unreachable.
-    try:
-        feeds = {k: json.loads(fetch(SITE + path, timeout=180)) for k, path in WAKATIME.items()}
+    target = ASSETS / THEME[0] / 'telemetry.svg'
+    WRITTEN.add(target)
+    if feeds is not None:
         synced = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         write('telemetry.svg', telemetry(telemetry_model(feeds['waveform'], feeds['languages'],
                                                          feeds['year']), synced))
-    except Exception as err:  # noqa: BLE001 — any fetch/parse failure keeps the previous stats
-        print(f'warning: WakaTime telemetry unavailable ({err}); keeping previous telemetry.svg',
-              file=sys.stderr)
-        if not (ASSETS / 'telemetry.svg').exists():
-            raise
+    elif not target.exists():
+        raise RuntimeError(f'no WakaTime data and no previous {target.relative_to(ROOT)}')
 
+
+def readme(data):
+    profile, experience, education, skills, projects = data
+    op = {k: v for k, v in profile['operative'].items() if not blank(v)}
+    socials = profile.get('socials', {})
     email = socials.get('email', '')
     mailto = email if email.startswith('mailto:') else f'mailto:{email}'
-    readme = f"""<!--
+    archive = []
+    for p in projects:
+        pid = p['id']
+        links = []
+        if p.get('preview'):
+            links.append(link_pic(f'{SITE}/?feed={quote(pid)}#archive', 'btn-feed.svg', 'View feed'))
+        for key, btn in (('live', 'btn-live.svg'), ('fe', 'btn-fe.svg'), ('be', 'btn-be.svg')):
+            if not blank(p.get(key)):
+                links.append(link_pic(p[key], btn, key.upper()))
+        card = picture(f'project-{pid}.svg', f"{p['name']} — {p['summary']}", '100%')
+        archive.append((link_pic(p['live'], f'project-{pid}.svg', p['name'], '100%')
+                        if not blank(p.get('live')) else card)
+                       + f'\n<p>\n  {chr(10).join(links)}\n</p>\n')
+    typing = typing_url(op)
+    return f"""<!--
   GENERATED FILE — do not edit by hand.
   Built by scripts/build.py from the weion.dev Pages CMS content and WakaTime feeds;
-  .github/workflows/build.yml refreshes it daily.
+  .github/workflows/build.yml refreshes it hourly and on CMS edits.
 -->
 
-<a href="{SITE}">{img('banner.svg', f"{op['codename']} // {op['realName']} — {op['role']}")}</a>
+{link_pic(SITE, 'banner.svg', f"{op['codename']} // {op['realName']} — {op['role']}", '100%')}
 
 <p align="center">
-  <a href="{SITE}"><img src="{escape(typing_url(op))}" alt="&gt; WEION.DEV // ACCESS GRANTED. WELCOME."/></a>
+  <a href="{SITE}"><picture><source media="(prefers-color-scheme: dark)" srcset="{escape(typing)}"/><source media="(prefers-color-scheme: light)" srcset="{escape(typing.replace('color=F5A623', 'color=B86A00'))}"/><img src="{escape(typing)}" alt="&gt; WEION.DEV // ACCESS GRANTED. WELCOME."/></picture></a>
 </p>
 
 <p align="center">
-  {link_img(f'{SITE}/#archive', 'btn-console.svg', 'Operations archive')}
-  {link_img(socials.get('github', ''), 'btn-github.svg', 'GitHub')}
-  {link_img(socials.get('linkedin', ''), 'btn-linkedin.svg', 'LinkedIn')}
+  {link_pic(f'{SITE}/#archive', 'btn-console.svg', 'Operations archive')}
+  {link_pic(socials.get('github', ''), 'btn-github.svg', 'GitHub')}
+  {link_pic(socials.get('linkedin', ''), 'btn-linkedin.svg', 'LinkedIn')}
 </p>
 
 <br/>
 
-{img('h-dossier.svg', '// 02 · DOSSIER — PERSONNEL FILE')}
+{picture('h-dossier.svg', '// 02 · DOSSIER — PERSONNEL FILE', '100%')}
 
-{img('dossier.svg', profile['bio'])}
+{picture('dossier.svg', profile['bio'], '100%')}
 
 <details>
 <summary><b><code>// SERVICE RECORD</code></b> — {len(experience)} entries · expand</summary>
 <br/>
 
-{img('record.svg', 'Service record and education')}
+{picture('record.svg', 'Service record and education', '100%')}
 
 </details>
 
 <br/>
 
-{img('h-capabilities.svg', '// 03 · SYSTEMS — CAPABILITIES MATRIX')}
+{picture('h-capabilities.svg', '// 03 · SYSTEMS — CAPABILITIES MATRIX', '100%')}
 
-{img('capabilities.svg', ', '.join(skills['skills']))}
+{picture('capabilities.svg', ', '.join(skills['skills']), '100%')}
 
 <br/>
 
-{img('h-archive.svg', '// 04 · ARCHIVE — OPERATIONS LOG')}
+{picture('h-archive.svg', '// 04 · ARCHIVE — OPERATIONS LOG', '100%')}
 
 {chr(10).join(archive)}
 <br/>
 
-{img('h-telemetry.svg', '// 05 · TELEMETRY — DEVELOPER STATS')}
+{picture('h-telemetry.svg', '// 05 · TELEMETRY — DEVELOPER STATS', '100%')}
 
-<a href="{SITE}/#telemetry">{img('telemetry.svg', 'WakaTime language distribution, 30-day activity waveform and yearly heatmap')}</a>
+{link_pic(f'{SITE}/#telemetry', 'telemetry.svg', 'WakaTime language distribution, 30-day activity waveform and yearly heatmap', '100%')}
 
 <br/>
 <br/>
 
-{img('h-eof.svg', '// 06 · END OF FILE — ESTABLISH LINK')}
+{picture('h-eof.svg', '// 06 · END OF FILE — ESTABLISH LINK', '100%')}
 
-{img('eof.svg', 'Remote terminals stand open.')}
+{picture('eof.svg', 'Remote terminals stand open.', '100%')}
 
 <p align="center">
-  {link_img(socials.get('github', ''), 'btn-eof-github.svg', 'GitHub')}
-  {link_img(socials.get('linkedin', ''), 'btn-eof-linkedin.svg', 'LinkedIn')}
-  {link_img(mailto, 'btn-eof-mail.svg', 'Send transmission')}
+  {link_pic(socials.get('github', ''), 'btn-eof-github.svg', 'GitHub')}
+  {link_pic(socials.get('linkedin', ''), 'btn-eof-linkedin.svg', 'LinkedIn')}
+  {link_pic(mailto, 'btn-eof-mail.svg', 'Send transmission')}
 </p>
 
 <br/>
 
-{img('footer.svg', profile.get('signoff') or 'END OF FILE')}
+{picture('footer.svg', profile.get('signoff') or 'END OF FILE', '100%')}
 """
-    (ROOT / 'README.md').write_text(readme)
-    WRITTEN.add('telemetry.svg')
-    for stale in ASSETS.glob('*.svg'):
-        if stale.name not in WRITTEN:
+
+
+def main():
+    data = [load_content(n) for n in ('profile', 'experience', 'education', 'skills', 'projects')]
+    global CHARSET
+    CHARSET += ''.join(sorted({ch for ch in json.dumps(data, ensure_ascii=False) if ord(ch) > 126}))
+    portrait = portrait_uri()
+    try:
+        feeds = {k: json.loads(fetch(SITE + path, timeout=180)) for k, path in WAKATIME.items()}
+    except Exception as err:  # noqa: BLE001 — any fetch/parse failure keeps the previous stats
+        print(f'warning: WakaTime telemetry unavailable ({err}); keeping previous telemetry.svg',
+              file=sys.stderr)
+        feeds = None
+    for theme in THEMES:
+        set_theme(theme)
+        THEME[0] = theme
+        render_assets(data, portrait, feeds)
+    (ROOT / 'README.md').write_text(readme(data))
+    for stale in ASSETS.rglob('*.svg'):
+        if stale not in WRITTEN:
             stale.unlink()
-    print('built', len(list(ASSETS.glob('*.svg'))), 'assets')
+    print('built', len(list(ASSETS.rglob('*.svg'))), 'assets')
 
 
 if __name__ == '__main__':
