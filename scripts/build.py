@@ -451,24 +451,24 @@ def capabilities(skills, core):
 def project_card(p):
     w = W - 4
     summary = wrap(p['summary'], FONTS['r'], 17, w - 56)
-    h = 128 + len(summary) * 26
+    h = 150 + len(summary) * 26  # 24px below the stack chips
     out = (f'<path d="{cut_rect(2, 2, w, h, 12)}" fill="url(#pg)" stroke="{C["line"]}"/>'
            + brackets(1, 1, w + 2, h + 2, 14, C['halo']))
     out += (f'<text x="26" y="34" class="m" font-size="12" letter-spacing="1.5" fill="{C["amber"]}">'
             f'OP-{escape(p["id"])}<tspan fill="{C["line"]}">  |  </tspan>'
             f'<tspan fill="{C["muted"]}">{escape(p["codename"])}</tspan></text>')
     sl = '● OPERATIONAL'
-    sw = FONTS['b'].width(sl, 11, 2.2) + 22
+    sw = FONTS['b'].width(sl, 11, 2.2) - 2.2 + 24
     out += (f'<rect x="{w - 22 - sw:g}" y="18" width="{sw:g}" height="24" fill="{C["ok"]}" fill-opacity=".06" stroke="{C["ok"]}"/>'
-            + text(w - 22 - sw / 2, 34, sl, 'b', 11, C['ok'], 2.2, 'middle'))
+            + text(w - 22 - sw / 2 + 1.1, 34, sl, 'b', 11, C['ok'], 2.2, 'middle'))
     out += text(26, 78, p['name'], 'd7', 28, C['bright'])
     out += ''.join(text(26, 112 + i * 26, ln, 'r', 17, C['muted']) for i, ln in enumerate(summary))
     x, cy = 26, 112 + len(summary) * 26 - 8
     for s in p.get('stack', []):
         label = s.upper()
-        cw = FONTS['b'].width(label, 11, 2.2) + 20
+        cw = FONTS['b'].width(label, 11, 2.2) - 2.2 + 24  # trailing letter-spacing excluded
         out += (f'<rect x="{x:g}" y="{cy}" width="{cw:g}" height="22" fill="{C["cyan"]}" fill-opacity=".05" stroke="{C["cyan"]}" stroke-opacity=".7"/>'
-                + text(x + 10, cy + 15, label, 'b', 11, C['cyan'], 2.2))
+                + text(x + cw / 2 + 1.1, cy + 15, label, 'b', 11, C['cyan'], 2.2, 'middle'))
         x += cw + 8
     return svg(W, h + 4, out, f"{p['name']} — {p['summary']}")
 
