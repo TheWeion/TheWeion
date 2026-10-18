@@ -1,0 +1,46 @@
+name: Sync from weion.dev
+
+# Rebuilds README.md + assets/ from the weion.dev Pages CMS content and the
+# site's edge-cached WakaTime feeds. Hourly so CMS edits land within the hour;
+# the build is deterministic, so a run with no upstream change commits nothing.
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [weion-content-updated]
+  push:
+    branches: [main]
+    paths: [scripts/**, .github/workflows/build.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/requirements.txt
+      - run: pip install -r scripts/requirements.txt
+      - run: python scripts/build.py
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md assets
+          if git diff --cached --quiet; then
+            echo 'No changes.'
+          else
+            git commit -m 'chore: sync profile from weion.dev'
+            git push
+          fi
